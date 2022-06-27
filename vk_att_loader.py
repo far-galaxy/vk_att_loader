@@ -10,6 +10,8 @@ from vk_api.longpoll import VkLongPoll, VkEventType
 from vk_api.tools import VkTools
 from vk_api.utils import get_random_id
 import os
+import requests
+import shutil
 
 class VkAttLoader(object):
     """ Класс инструмента для загрузки всех вложений из сообщения, пересланному боту"""
@@ -117,25 +119,63 @@ class VkAttLoader(object):
                 max_i = n
                 max_s = s
         return sizes[max_i]["url"]
-            
+    
+    def download(self, folder, name, url):
+        """ Скачивание файла
+        
+        Думаю, аргументы здесь очевидны (:
+        """
+        
+        response = requests.get(url, stream=True)
+        if not os.path.isdir(f'files\{folder}'):
+            os.makedirs(f'files\{folder}') 
+        filename = f'files\{folder}\{name}'
+        path = os.path.abspath(filename) 
+        with open(path, 'wb') as out_file:
+            shutil.copyfileobj(response.raw, out_file)
+        del response
+        
+    def remove_doubles(self, li):
+        """Удаляем все повторяющиеся элементы из списка li"""
+        new_list = []
+        [new_list.append(i) for i in li if i not in new_list]
+        return new_list
+        
         
     def load_attachments(self):
-        """
-        Загрузка всех вложений
-        """
+        """Загрузка всех вложений"""
         
         for message in self.messages:
+            mid = message.message_id
             full_msg = self.tools.get_all_iter("messages.getById",
                                                100, 
-                                               values = {"message_ids":message.message_id})
+                                               values = {"message_ids":mid})
             self.count = 0
             self.photos = []
             self.docs = []
-            self.msg(message.user_id, "Загрузка вложений...")
             self.get_att(full_msg)
-            print(self.photos)
-            print(self.docs)
-            self.msg(message.user_id, "Вложения загружены")
+            
+            self.photos = self.remove_doubles(self.photos)
+            self.docs = self.remove_doubles(self.docs)
+            
+            photos_count = len(self.photos)
+            docs_count = len(self.docs)
+            
+            self.msg(message.user_id, 
+                     f"Загрузка вложений...\nВсего файлов: {photos_count+docs_count}")
+            
+            for num, photo in enumerate(self.photos):
+                folder = f"{mid}_photos"
+                name = f"photo_{num}.jpg"
+                self.download(folder, name, photo)
+                
+            for doc in self.docs:
+                folder = f"{mid}_docs"
+                name = doc['name']
+                self.download(folder, name, doc['url'])
+                
+            
+            self.msg(message.user_id, f"Вложения загружены")
         
                 
     
