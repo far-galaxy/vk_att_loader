@@ -56,7 +56,8 @@ class VkAttLoader(object):
     def check_messages(self, keyword = ""):
         """Проверка наличия входящих сообщений и скачивание вложений
         
-        :keyword: Команда, на которую будет откликаться бот и выполнять скачивание. При пустом значении будет реагировать на любое сообщение
+        :keyword: Команда, на которую будет откликаться бот и выполнять скачивание. \n
+        При пустом значении keyword будет реагировать на любое сообщение (не рекомендуется)
         """
         events = self.longpoll.check()
         messages = []
@@ -72,7 +73,9 @@ class VkAttLoader(object):
         
         :messages: :class:`list` список `объектов сообщений ВК <https://dev.vk.com/reference/objects/message>`_.
         
-        Ссылки на фотографии записываются в :class:`list` self.urls
+        Ссылки на фотографии записываются в :class:`list` self.photos \n
+        Документы записываются в :class:`list` self.docs в формате: \n
+        {'name':'Название файла','url':'Ссылка на файл'}
         """
         for m in messages:
             if 'attachments' in m and len(m['attachments']) != 0:
@@ -80,7 +83,20 @@ class VkAttLoader(object):
                             # Фотографии
                             if 'photo' in att:
                                 photo = self.find_finest_photo(att['photo']['sizes'])
-                                self.urls.append(photo)
+                                self.photos.append(photo)
+                            # Фото и документы из поста    
+                            if 'wall' in att:
+                                docs = att['wall']['attachments']
+                                for doc in docs:
+                                    if 'photo' in doc:
+                                        photo = self.find_finest_photo(doc['photo']['sizes'])
+                                        self.photos.append(photo)
+                                    if 'doc' in doc:
+                                        document = {}
+                                        document['name'] = doc['doc']['title']
+                                        document['url'] = doc['doc']['url']
+                                        self.docs.append(document)
+                                        
                                 
             if 'fwd_messages' in m:
                 self.get_att(m['fwd_messages'])
@@ -113,10 +129,12 @@ class VkAttLoader(object):
                                                100, 
                                                values = {"message_ids":message.message_id})
             self.count = 0
-            self.urls = []
+            self.photos = []
+            self.docs = []
             self.msg(message.user_id, "Загрузка вложений...")
             self.get_att(full_msg)
-            print(self.urls)
+            print(self.photos)
+            print(self.docs)
             self.msg(message.user_id, "Вложения загружены")
         
                 
