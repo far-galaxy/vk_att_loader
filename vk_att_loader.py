@@ -75,33 +75,55 @@ class VkAttLoader(object):
         
         :messages: :class:`list` список `объектов сообщений ВК <https://dev.vk.com/reference/objects/message>`_.
         
-        Ссылки на фотографии записываются в :class:`list` self.photos \n
-        Документы записываются в :class:`list` self.docs в формате: \n
-        {'name':'Название файла','url':'Ссылка на файл'}
+        Подробнее, куда записываются вложения: \n
+        Фото: :class:`get_photo`
         """
         for m in messages:
             if 'attachments' in m and len(m['attachments']) != 0:
                         for att in m['attachments']:  
                             # Фотографии
                             if 'photo' in att:
-                                photo = self.find_finest_photo(att['photo']['sizes'])
-                                self.photos.append(photo)
+                                self.get_photo(att)
                             # Фото и документы из поста    
                             if 'wall' in att:
                                 docs = att['wall']['attachments']
                                 for doc in docs:
                                     if 'photo' in doc:
-                                        photo = self.find_finest_photo(doc['photo']['sizes'])
-                                        self.photos.append(photo)
+                                        self.get_photo(doc)
                                     if 'doc' in doc:
-                                        document = {}
-                                        document['name'] = doc['doc']['title']
-                                        document['url'] = doc['doc']['url']
-                                        self.docs.append(document)
+                                        self.get_doc(doc)
+                            # Документ
+                            if 'doc' in att:
+                                self.get_doc(att)  
                                         
                                 
             if 'fwd_messages' in m:
                 self.get_att(m['fwd_messages'])
+    
+    def get_photo(self, photo):
+        """Получить фото
+        
+        :photo: `объект медиавложения ВК <https://dev.vk.com/reference/objects/attachments-message>`_.
+       
+        Фото записывается в :class:`list` self.photos в формате: \n
+        {'url':'Ссылка на файл'}
+        """
+        photo_el = {}
+        photo_el["url"] = self.find_finest_photo(photo['photo']['sizes'])
+        self.photos.append(photo_el) 
+        
+    def get_doc(self, doc):
+        """Получить документ
+        
+        :photo: `объект медиавложения ВК <https://dev.vk.com/reference/objects/attachments-message>`_.
+       
+        Документ записывается в :class:`list` self.docs в формате: \n
+        {'name':'Название файла','url':'Ссылка на файл'}
+        """     
+        document = {}
+        document['name'] = doc['doc']['title']
+        document['url'] = doc['doc']['url']
+        self.docs.append(document)        
                                 
     def find_finest_photo(self, sizes):
         """
@@ -167,7 +189,7 @@ class VkAttLoader(object):
             for num, photo in enumerate(self.photos):
                 folder = f"{mid}_photos"
                 name = f"photo_{num}.jpg"
-                self.download(folder, name, photo)
+                self.download(folder, name, photo['url'])
                 
             for doc in self.docs:
                 folder = f"{mid}_docs"
