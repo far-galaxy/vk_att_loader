@@ -20,6 +20,7 @@ class VkAttLoader(object):
         self.vk = vk_api.VkApi(token = self.token)
         self.longpoll = VkLongPoll(self.vk, wait=1)
         self.tools = VkTools(self.vk)
+        self.messages = None
        
     def get_token(self):
         """Загрузка токена из файла `token.txt`
@@ -68,7 +69,7 @@ class VkAttLoader(object):
                 if keyword == "" or (keyword != "" and event.text == keyword):
                     messages.append(event)
                     self.messages = messages
-                    self.load_attachments()
+                    
         
     def get_att(self, messages):
         """Рекурсивная функция по поиску вложений в принятых сообщениях
@@ -85,7 +86,7 @@ class VkAttLoader(object):
                             if 'photo' in att:
                                 self.get_photo(att)
                             # Фото и документы из поста    
-                            if 'wall' in att:
+                            elif 'wall' in att:
                                 docs = att['wall']['attachments']
                                 for doc in docs:
                                     if 'photo' in doc:
@@ -93,8 +94,12 @@ class VkAttLoader(object):
                                     if 'doc' in doc:
                                         self.get_doc(doc)
                             # Документ
-                            if 'doc' in att:
-                                self.get_doc(att)  
+                            elif 'doc' in att:
+                                self.get_doc(att)
+                            
+                            # Прочее
+                            else:
+                                print(att)
                                         
                                 
             if 'fwd_messages' in m:
@@ -198,6 +203,7 @@ class VkAttLoader(object):
                 
             
             self.msg(message.user_id, f"Вложения загружены")
+            self.messages = None
         
                 
     
@@ -207,4 +213,6 @@ if __name__ == "__main__":
     
     while True:
         bot.check_messages()
+        if bot.messages != None:
+            bot.load_attachments()
         
